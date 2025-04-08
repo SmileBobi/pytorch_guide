@@ -10,15 +10,16 @@
 
 ## 1.2 DDP 概念及原理
 - **DDP 也是数据并行，所以每张卡都有模型和输入。我们以多进程多线程为例，每起一个进程，该进程的 device[0] 都会从本地复制模型，如果该进程仍有多线程，就像 DP，模型会从 device[0] 复制到其他设备。**
-- **DDP 通过 Reducer 来管理梯度同步。为了提高通讯效率， Reducer 会将梯度归到不同的桶里（按照模型参数的 reverse order， 因为反向传播需要符合这样的顺序），一次归约一个桶。其中桶的大小为参数 bucket_cap_mb 默认为 25，可根据需要调整。下图即为一个例子。可以看到每个进程里，模型参数都按照倒序放在桶里，每次归约一个桶。**
+- **DDP 通过 Reducer 来管理梯度同步。为了提高通讯效率， Reducer 会将梯度归到不同的桶里（按照模型参数的 reverse order， 因为反向传播需要符合这样的顺序），一次归约一个桶。其中桶的大小为参数 bucket_cap_mb 默认为 25，单位是M，可根据需要调整。下图即为一个例子。可以看到每个进程里，模型参数都按照倒序放在桶里，每次归约一个桶。**
 ![桶的案例](https://user-images.githubusercontent.com/16999635/72401724-d296d880-371a-11ea-90ab-737f86543df9.png)
 [pytorch 案例地址](https://pytorch.org/docs/stable/notes/ddp.html)
+- 上图详解：**反向传播的时候，每一个param都会计算出来对应的grad，对应的grad之间会做AllReduce（通信算子）,做完AllReduce后进程0 的grad0和进程1的grad0它们的梯度信息保持一致，相加再做平均，每张卡上都会平均分配一份。**；**bucket：一个一个tensor做通讯效率是极低的，真正做通讯（AllReduce）的时候，把很多的Tensor拼接成一个大的Tensor，就叫做bucket，DDP这边就叫做分桶的措施，分桶之后，一个桶的Tensor统一做AllReduce，极大的提升执行效率，真正做AllReduce的并不是逐Tensor进行，而是分桶进行的**
 - **DDP 通过在构建时注册 autograd hook 进行梯度同步。反向传播时，当一个梯度计算好后，相应的 hook 会告诉 DDP 可以用来归约。当一个桶里的梯度都可以了，Reducer 就会启动异步 allreduce 去计算所有进程的平均值。allreduce 异步启动使得 DDP 可以边计算边通信，提高效率。当所有桶都可以了，Reducer 会等所有 allreduce 完成，然后将得到的梯度写到 param.grad。**
 
 ## 1.3 DDP 优势
-- DDP 采用多进程，最推荐的做法是每张卡一个进程从而避免上一节所说单进程带来的影响；
+- DDP 采用多进程，最推荐的做法是**每张卡一个进程**从而避免上一节所说单进程带来的影响；
 - DDP 同样支持单进程多线程多卡操作，自然也支持多进程多线程；
-- DP 的通信成本随着 GPU 数量线性增长，而 DDP 支持 Ring AllReduce，其通信成本是恒定的，与 GPU 数量无关；
+- DP 的通信成本随着 GPU 数量线性增长，而 DDP 支持 Ring AllReduce，其**通信成本是恒定的**，与 GPU 数量无关；
 - DDP 通过保证初始状态相同并且改变量也相同（指同步梯度） ，保证模型同步；
 - 使用 Ring AllReduce 加速数据同步；
 
