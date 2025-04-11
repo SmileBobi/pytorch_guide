@@ -128,25 +128,21 @@ python demo.py --world_size=2 --rank=2 --master_addr="192.168.0.1" --master_port
   net = torch.nn.parallel.DistributedDataParallel(net,
         device_ids=[args.local_rank], output_device=args.local_rank)
 
+**现在主要用torchrun启动**[torchrun](https://pytorch.org/docs/stable/elastic/run.html)
+
 **假设一共有两台机器（节点1和节点2），每个节点上有8张卡，节点1的IP地址为192.168.0.1**
 **占用的端口12355（端口可以更换），启动的方式如下：**
 ```shell
  #节点1
-python -m torch.distributed.launch --nproc_per_node=8
-       --nnodes=2 --node_rank=0 --master_addr="192.168.0.1"
-       --master_port=12355 MNIST.py
+torchrun --nproc_per_node=8 --nnodes=2 --node_rank=0 --master_addr="192.168.0.1" --master_port=12355 MNIST.py
  #节点2
-python -m torch.distributed.launch --nproc_per_node=8
-       --nnodes=2 --node_rank=1 --master_addr="192.168.0.1"
-       --master_port=12355 MNIST.py
+torchrun --nproc_per_node=8 --nnodes=2 --node_rank=1 --master_addr="192.168.0.1" --master_port=12355 MNIST.py
 ```
 
 **假如只启动一台机器时：**
 ```shell
 #节点1
-python -m torch.distributed.launch --nproc_per_node=8
-       --nnodes=1 --node_rank=0 --master_addr="192.168.0.1"
-       --master_port=12355 MNIST.py
+torchrun --nproc_per_node=8 --nnodes=1 --node_rank=0 --master_addr="192.168.0.1" --master_port=12355 MNIST.py
 ```
 
 # 5. 其它注意事项
