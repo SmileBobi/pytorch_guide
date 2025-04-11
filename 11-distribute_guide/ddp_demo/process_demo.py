@@ -13,7 +13,7 @@ os.environ['MASTER_PORT'] = '12355'
 WORLD_SIZE = 1 # 一共启动多少个进程
 
 def main(rank):
-    dist.init_process_group("sccl", rank=rank, world_size= WORLD_SIZE) # 初始化进程组（后端选择，rank，world_size）
+    dist.init_process_group("nccl", rank=rank, world_size= WORLD_SIZE) # 初始化进程组（后端选择，rank，world_size）
     torch.cuda.set_device(rank) #device 设置
     trans = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5,), (1.0,))])
     data_set = torchvision.datasets.MNIST("./data", train=True, transform=trans, target_transform=None, download=True)
